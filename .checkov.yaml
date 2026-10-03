@@ -1,0 +1,9 @@
+# Checkov configuration used locally and in CI.
+framework:
+  - terraform
+  - dockerfile
+  - github_actions
+  - secrets
+download-external-modules: false
+compact: true
+quiet: true

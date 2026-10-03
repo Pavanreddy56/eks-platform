@@ -1,0 +1,14 @@
+# Copy to terraform.tfvars and fill in. terraform.tfvars is git-ignored.
+
+owner       = "your-name"
+github_repo = "YOUR_GITHUB_USERNAME/eks-platform"
+
+# Your public IP: curl -s https://checkip.amazonaws.com
+cluster_endpoint_public_access_cidrs = ["203.0.113.10/32"]
+
+# Optional: get an email if the project is forecast to exceed the budget.
+budget_alert_email = ""
+monthly_budget_usd = 50
+
+# If your AWS account already has the GitHub OIDC provider, set this to false.
+create_github_oidc_provider = true

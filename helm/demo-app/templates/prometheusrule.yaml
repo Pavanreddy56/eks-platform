@@ -1,0 +1,54 @@
+{{- if .Values.monitoring.prometheusRule.enabled }}
+{{- $job := include "demo-app.fullname" . }}
+{{- $ns := .Release.Namespace }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $job }}
+  labels:
+    {{- include "demo-app.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: {{ $job }}.rules
+      rules:
+        - alert: DemoAppDown
+          expr: absent(up{job="{{ $job }}",namespace="{{ $ns }}"} == 1)
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $job }} has no healthy scrape targets"
+            runbook: "docs/runbook.md#demoappdown"
+        - alert: DemoAppHighErrorRate
+          expr: |
+            sum(rate(http_requests_total{job="{{ $job }}",namespace="{{ $ns }}",status=~"5.."}[5m]))
+              /
+            clamp_min(sum(rate(http_requests_total{job="{{ $job }}",namespace="{{ $ns }}"}[5m])), 1e-9)
+              > {{ .Values.monitoring.prometheusRule.errorRateThreshold }}
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $job }} 5xx error rate above threshold"
+            runbook: "docs/runbook.md#demoapphigherrorrate"
+        - alert: DemoAppHighLatencyP95
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{job="{{ $job }}",namespace="{{ $ns }}"}[5m]))
+            ) > {{ .Values.monitoring.prometheusRule.latencyP95ThresholdSeconds }}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $job }} p95 latency above threshold"
+            runbook: "docs/runbook.md#demoapphighlatencyp95"
+        - alert: DemoAppContainerOOMKilled
+          expr: |
+            max by (pod) (kube_pod_container_status_last_terminated_reason{namespace="{{ $ns }}",reason="OOMKilled"}) == 1
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "A {{ $job }} container was OOMKilled"
+            runbook: "docs/runbook.md#demoappcontaineroomkilled"
+{{- end }}

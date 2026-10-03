@@ -1,0 +1,91 @@
+name: CD
+
+# Build -> scan -> push to ECR -> bump the image tag in Git.
+# Argo CD notices the commit and rolls the new version out (GitOps):
+# the pipeline never talks to the cluster directly.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - ".github/workflows/cd.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # commit the new image tag
+  id-token: write   # request the OIDC token for AWS
+
+concurrency:
+  group: cd-main
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION || 'ap-south-1' }}
+  ECR_REPOSITORY: eks-platform/demo-app
+
+jobs:
+  build-push-deploy:
+    name: Build, scan, push, deploy
+    # Skips cleanly until AWS is set up and the repository variable exists.
+    if: ${{ vars.AWS_ROLE_ARN != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Configure AWS credentials (OIDC, no stored keys)
+        uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@03f1aad4c6c7ffd436567f42f9384779290529bd # v2
+
+      - name: Compute image reference
+        id: meta
+        run: |
+          echo "tag=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          echo "repo=${{ steps.ecr.outputs.registry }}/${ECR_REPOSITORY}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+
+      - name: Build image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: app
+          load: true
+          push: false
+          tags: ${{ steps.meta.outputs.repo }}:${{ steps.meta.outputs.tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Security gate - Trivy (fixable CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: ${{ steps.meta.outputs.repo }}:${{ steps.meta.outputs.tag }}
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Push image
+        run: docker push "${{ steps.meta.outputs.repo }}:${{ steps.meta.outputs.tag }}"
+
+      - name: Bump image tag in Helm values (GitOps)
+        env:
+          REPO: ${{ steps.meta.outputs.repo }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          yq -i '.image.repository = strenv(REPO) | .image.tag = strenv(TAG)' helm/demo-app/values-dev.yaml
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add helm/demo-app/values-dev.yaml
+          git commit -m "chore(deploy): demo-app ${TAG} to dev [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - name: Summary
+        run: |
+          echo "### Deployed \`${{ steps.meta.outputs.tag }}\` to dev" >> "$GITHUB_STEP_SUMMARY"
+          echo "Argo CD will sync the change within ~3 minutes." >> "$GITHUB_STEP_SUMMARY"

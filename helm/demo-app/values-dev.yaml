@@ -1,0 +1,8 @@
+# Dev environment overrides. The image block is updated automatically by
+# .github/workflows/cd.yml after each successful build on main.
+image:
+  repository: "ACCOUNT_ID.dkr.ecr.ap-south-1.amazonaws.com/eks-platform/demo-app"
+  tag: "not-built-yet"
+
+env:
+  LOG_LEVEL: DEBUG

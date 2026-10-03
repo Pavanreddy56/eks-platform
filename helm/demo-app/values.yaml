@@ -1,0 +1,94 @@
+# Default values for demo-app. Environment overrides live in values-<env>.yaml.
+
+image:
+  repository: ""        # set by the CD workflow in values-dev.yaml
+  tag: ""               # git commit SHA, set by the CD workflow
+  pullPolicy: IfNotPresent
+
+replicaCount: 2         # ignored when autoscaling.enabled is true
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+containerPort: 8080
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: true
+  className: alb
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /healthz
+    alb.ingress.kubernetes.io/success-codes: "200"
+  path: /
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 6
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# Rolling update with no capacity loss during deploys.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+env:
+  LOG_LEVEL: INFO
+
+database:
+  enabled: true
+  # Pulled from AWS Secrets Manager by the External Secrets Operator.
+  awsRegion: ap-south-1
+  remoteSecretName: eks-platform-dev/db-credentials
+  refreshInterval: 1h
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    interval: 30s
+  prometheusRule:
+    enabled: true
+    errorRateThreshold: 0.05     # 5% of requests returning 5xx
+    latencyP95ThresholdSeconds: 0.5
+  grafanaDashboard:
+    enabled: true
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
