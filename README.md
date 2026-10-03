@@ -1,7 +1,7 @@
 # Production-Style EKS Platform on AWS
 
-[![CI](https://github.com/YOUR_GITHUB_USERNAME/eks-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/eks-platform/actions/workflows/ci.yml)
-[![CD](https://github.com/YOUR_GITHUB_USERNAME/eks-platform/actions/workflows/cd.yml/badge.svg)](https://github.com/YOUR_GITHUB_USERNAME/eks-platform/actions/workflows/cd.yml)
+[![CI](https://github.com/Pavanreddy56/eks-platform/actions/workflows/ci.yml/badge.svg)](https://github.com/Pavanreddy56/eks-platform/actions/workflows/ci.yml)
+[![CD](https://github.com/Pavanreddy56/eks-platform/actions/workflows/cd.yml/badge.svg)](https://github.com/Pavanreddy56/eks-platform/actions/workflows/cd.yml)
 
 An end-to-end AWS platform built the way a small platform team would build it:
 infrastructure as code with Terraform, Kubernetes on Amazon EKS, GitOps delivery
