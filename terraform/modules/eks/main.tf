@@ -3,7 +3,7 @@
 module "eks" {
   #checkov:skip=CKV_TF_1:Registry module pinned to an exact version; commit-hash sources would bypass the registry
   source  = "terraform-aws-modules/eks/aws"
-  version = "21.26.0" # exact pin for reproducible plans; Dependabot proposes upgrades
+  version = "21.29.0" # exact pin for reproducible plans; Dependabot proposes upgrades
 
   name               = var.cluster_name
   kubernetes_version = var.kubernetes_version
