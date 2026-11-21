@@ -4,7 +4,7 @@
 module "vpc" {
   #checkov:skip=CKV_TF_1:Registry module pinned to an exact version; commit-hash sources would bypass the registry
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.7.3" # exact pin for reproducible plans; Dependabot proposes upgrades
+  version = "6.8.0" # exact pin for reproducible plans; Dependabot proposes upgrades
 
   name = var.name
   cidr = var.cidr
